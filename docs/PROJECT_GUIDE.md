@@ -204,7 +204,7 @@ Split plan (100 train engines, seed 42):
 | Model | Input | Fayda | Keemat |
 |---|---|---|---|
 | Baseline: linear regression | Current cycle ke scaled sensors | Neeche ki line: isse kharab to kuch galat hai | Trend nahi dekhta |
-| **LightGBM** | Rolling features (section 6) | Tabular data par industry default, seconds mein train, har prediction ki explanation (`pred_contrib` = SHAP values, bina extra library) | Features khud banane padte hain |
+| **LightGBM** | Rolling features (section 6) | Tabular data par bahut common, jaldi train, har prediction ki explanation (`pred_contrib` = SHAP values, bina extra library) | Features khud banane padte hain |
 | **LSTM** (PyTorch) | 30 × 14 sequence | Trend khud seekhta hai | CPU par minutes mein train, kam explainable, 30 cycles se pehle prediction nahi |
 
 **Champion rule (frozen):** validation engines par RMSE + NASA score dekh ke champion chuna jayega. Barabari ho to LightGBM (sasta, explainable).
@@ -260,7 +260,7 @@ Shart: guarantee tabhi hai jab future data calibration data jaisa ho. FD003 jais
 | Anomaly threshold | Neecha | Ooncha | 99th percentile + 3-of-5 | False alarm vs der se pakadna; persistence 2–3 cycle der laata hai par noise kaatta hai |
 | Prediction | Single number | Interval | Dono | Maintenance planner ko risk chahiye, sirf average nahi |
 | Validation split | Row-wise | Engine-wise | Engine-wise | Row-wise leakage se metrics jhoothe achhe aate hain |
-| Serving | PyTorch model | ONNX Runtime | ONNX | Serving image mein ~hundreds of MB torch nahi chahiye; framework-independent inference |
+| Serving | PyTorch model | ONNX Runtime | ONNX | Serving image mein bhaari torch nahi chahiye; framework-independent inference |
 
 Ek aur bada sabak: C-MAPSS **simulated** hai. Asli sensors mein missing values, sensor drift, irregular sampling, maintenance ke beech mein records hote hain. Hamare results simulated data ke results hain, aur README mein yahi likhenge.
 
@@ -332,12 +332,12 @@ Ek aur bada sabak: C-MAPSS **simulated** hai. Asli sensors mein missing values, 
 | Env, deps | uv + `uv.lock` | Fast, exact reproducible versions | pip + requirements.txt: lock kamzor |
 | Data | pandas + Parquet (pyarrow) | Standard, processed data fast load | Polars: achha hai par ek naya API seekhna padta |
 | Classical ML | scikit-learn (PCA, IsolationForest, pipelines, GroupKFold) | Industry standard | — |
-| GBM | LightGBM | Tabular par industry default, built-in SHAP values | XGBoost: barabar, ek hi kaafi |
-| Deep learning | PyTorch (CPU) | Market mein sabse zyada use, learning ke liye saaf | Keras/TF: kam demand in naye projects; Lightning: abstraction pehle samajh ke |
-| Serving inference | ONNX Runtime | Chhota, fast, framework-independent | torch in serving: bhaari image |
+| GBM | LightGBM | Tabular data par bahut common, built-in SHAP values | XGBoost: barabar, ek hi kaafi |
+| Deep learning | PyTorch (CPU) | Training loop khud likhna padta hai (seekhne ke liye achha), ONNX export built-in | Keras/TF: barabar kaam karta, ek framework kaafi; Lightning: pehle plain loop samjho |
+| Serving inference | ONNX Runtime | Chhota, framework-independent | torch in serving: bhaari install |
 | API | FastAPI + Pydantic v2 | Typed validation, auto docs (`/docs`) | Flask: validation khud likhna |
 | Storage | SQLite (stdlib) | Zero setup, 100 engines × ~300 cycles ke liye kaafi | TimescaleDB: stretch S3 |
-| Dashboard | Streamlit + Plotly | Python mein jaldi interactive UI | Grafana: ops ke liye best, stretch S3 |
+| Dashboard | Streamlit + Plotly | Python mein jaldi interactive UI | Grafana: ops dashboards ka common tool, stretch S3 |
 | Experiment tracking | MLflow (local file store) | MLOps ka standard tool, ₹0 local | W&B: paid cloud |
 | Drift | Apna PSI code | ~15 lines | Evidently: bhaari dependency |
 | Tests, lint | pytest, ruff | Standard | — |
