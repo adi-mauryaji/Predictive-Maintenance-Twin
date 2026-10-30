@@ -366,7 +366,7 @@ Isliye plan ka core (leakage-free time-series ML, honest model comparison, uncer
 
 ## 13. Build plan
 
-Har milestone chhote chunks mein banega. Har chunk ke baad: kya bana, kyun, kaunsa trade-off, aur 2–3 check questions.
+Kaise sikhaya jayega: `~/ai-engineer/CLAUDE.md` ke "How to teach" rules (pehle design MCQ round, phir setup ki har command samjhayi jayegi, phir chhote chunks; har chunk ke baad explanation + 3–5 MCQs, aur chunk run karke output dekhna). Learning state: `~/Digital Twinning/learning/`. Faisla: KYROS ADR-004.
 Bhaari kaam (torch download, LSTM training) se pehle time / RAM / CPU bata ke permission li jayegi.
 
 | # | Milestone | Kya banega | Kya seekhoge |
