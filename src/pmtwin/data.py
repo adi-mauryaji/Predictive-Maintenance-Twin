@@ -87,3 +87,14 @@ def load_cmapss(raw_dir: Path, subset: str) -> CmapssSubset:
         test=_read_table(raw_dir / f"test_{subset}.txt"),
         test_rul=rul.rename("rul"),
     )
+
+
+def add_rul(engines: pd.DataFrame, rul_cap: int) -> pd.DataFrame:
+    """Return a copy with `rul` and the capped training `target`.
+
+    Only for run-to-failure data (the train files). A test engine stops before it fails, so its
+    last recorded cycle is not RUL 0; its true value is in `test_rul`.
+    """
+    last_cycle = engines.groupby("unit")["cycle"].transform("max")
+    rul = last_cycle - engines["cycle"]
+    return engines.assign(rul=rul, target=rul.clip(upper=rul_cap))

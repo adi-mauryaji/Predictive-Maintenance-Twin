@@ -4,12 +4,14 @@ from hashlib import sha256
 from io import BytesIO
 from zipfile import ZipFile
 
+import pandas as pd
 import pytest
 
-from pmtwin.config import Settings
+from pmtwin.config import FD001_SENSORS, Settings
 from pmtwin.data import (
     CMAPSS_FILES,
     ChecksumError,
+    add_rul,
     download_cmapss,
     install_archive,
     load_cmapss,
@@ -162,3 +164,49 @@ def test_real_fd001_first_engine_matches_the_files(real_raw_dir):
     assert len(subset.train[subset.train["unit"] == 1]) == 192
     assert len(subset.test[subset.test["unit"] == 1]) == 31
     assert subset.test_rul.to_dict()[1] == 112
+
+
+def test_add_rul_counts_down_to_zero_per_engine():
+    engines = pd.DataFrame({"unit": [1, 1, 1, 2, 2], "cycle": [1, 2, 3, 1, 2]})
+
+    labelled = add_rul(engines, rul_cap=125)
+
+    assert labelled["rul"].tolist() == [2, 1, 0, 1, 0]
+
+
+def test_add_rul_caps_only_the_target():
+    engines = pd.DataFrame({"unit": [1] * 5, "cycle": [1, 2, 3, 4, 5]})
+
+    labelled = add_rul(engines, rul_cap=3)
+
+    assert labelled["rul"].tolist() == [4, 3, 2, 1, 0]
+    assert labelled["target"].tolist() == [3, 3, 2, 1, 0]
+
+
+def test_add_rul_leaves_the_input_unchanged():
+    engines = pd.DataFrame({"unit": [1, 1], "cycle": [1, 2]})
+
+    add_rul(engines, rul_cap=125)
+
+    assert list(engines.columns) == ["unit", "cycle"]
+
+
+def test_real_fd001_labels(real_raw_dir):
+    train = load_cmapss(real_raw_dir, "FD001").train
+
+    labelled = add_rul(train, Settings().rul_cap)
+
+    first_engine = labelled[labelled["unit"] == 1]
+    assert first_engine["rul"].tolist()[:2] == [191, 190]
+    assert first_engine["target"].tolist()[:2] == [125, 125]
+    assert labelled.groupby("unit")["rul"].min().tolist() == [0] * 100
+    assert int(labelled["target"].max()) == 125
+
+
+def test_fd001_sensor_list_keeps_exactly_the_sensors_that_vary(real_raw_dir):
+    train = load_cmapss(real_raw_dir, "FD001").train
+    sensors = [f"s{number}" for number in range(1, 22)]
+
+    spread = train[sensors].std()
+
+    assert tuple(spread[spread >= 0.01].index) == FD001_SENSORS
