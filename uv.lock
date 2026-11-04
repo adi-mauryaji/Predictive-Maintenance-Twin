@@ -2299,6 +2299,7 @@ dashboard = [
 ]
 dev = [
     { name = "ipykernel" },
+    { name = "matplotlib" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -2329,6 +2330,7 @@ dashboard = [
 ]
 dev = [
     { name = "ipykernel", specifier = ">=7.4.0" },
+    { name = "matplotlib", specifier = ">=3.11.2" },
     { name = "pytest", specifier = ">=9.2.0" },
     { name = "ruff", specifier = ">=0.17.3" },
 ]
