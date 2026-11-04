@@ -29,12 +29,15 @@ name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
+[tool.uv]
+default-groups = ["dev", "dashboard"]
+
 [tool.uv.sources]
 torch = { index = "pytorch-cpu" }
 
 [dependency-groups]
 dashboard = [
-    "plotly>=7.1.0",
+    "altair>=6.3.0",
     "streamlit>=1.66.1",
 ]
 dev = [
@@ -50,8 +53,12 @@ train = [
     "torch>=2.15.0",
 ]
 
+[tool.fastapi]
+entrypoint = "pmtwin.api:app"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["dashboard"]
 
 [tool.ruff]
 line-length = 100
@@ -63,3 +70,4 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
+extraPaths = ["dashboard"]

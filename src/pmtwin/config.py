@@ -33,7 +33,18 @@ class Settings(BaseSettings):
     data_dir: Path = PROJECT_ROOT / "data"
     artifacts_dir: Path = PROJECT_ROOT / "artifacts"
     rul_cap: int = 125
+    watch_rul: int = 60
+    critical_rul: int = 30
+    api_url: str = "http://127.0.0.1:8000"
 
     @property
     def raw_dir(self) -> Path:
         return self.data_dir / "raw"
+
+    @property
+    def db_path(self) -> Path:
+        return self.data_dir / "twin.db"
+
+    @property
+    def gbm_path(self) -> Path:
+        return self.artifacts_dir / "gbm.joblib"
