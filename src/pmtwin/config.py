@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="PMT_")
 
     data_dir: Path = PROJECT_ROOT / "data"
+    artifacts_dir: Path = PROJECT_ROOT / "artifacts"
     rul_cap: int = 125
 
     @property

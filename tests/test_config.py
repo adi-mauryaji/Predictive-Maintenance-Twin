@@ -18,3 +18,10 @@ def test_env_var_moves_the_raw_data_folder(tmp_path, monkeypatch):
     monkeypatch.setenv("PMT_DATA_DIR", str(tmp_path))
 
     assert Settings().raw_dir == tmp_path / "raw"
+
+
+def test_artifacts_dir_ignores_current_directory(tmp_path, monkeypatch):
+    monkeypatch.delenv("PMT_ARTIFACTS_DIR", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    assert Settings().artifacts_dir == REPO_ROOT / "artifacts"
