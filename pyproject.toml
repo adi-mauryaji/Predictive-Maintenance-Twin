@@ -1,0 +1,16 @@
+[project]
+name = "pmtwin"
+version = "0.1.0"
+description = "Digital twin for predictive maintenance on NASA C-MAPSS: anomaly + RUL per engine"
+authors = [
+    { name = "adi-mauryaji", email = "aditya1925011@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = []
+
+[project.scripts]
+pmtwin = "pmtwin:main"
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
