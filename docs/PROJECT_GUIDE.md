@@ -112,9 +112,11 @@ Correlation sirf linear rishta naapta hai aur ek engine ki trend ko poori fleet 
 
 ### 4.4 FD003 kyun interesting hai
 
-FD001 mein s20 aur s21 ka RUL ke saath r ≈ +0.63; FD003 (do fault modes) mein wahi r ≈ +0.04 aur +0.03 ho jaata hai.
-Matlab doosra fault mode **alag sensors** hilata hai. Ek FD001 par train model FD003 par galat confidence ke saath galat bolega.
-Hum isko M8 mein **out-of-distribution demo** banayenge: FD003 replay karo, aur dekho drift monitor aur anomaly model pakadte hain ya nahi.
+FD001 mein s7, s12, s20, s21 **har engine** mein life ke saath girte hain (100 mein se 100). FD003 (do fault modes) mein engines saaf do groups mein bant jaate hain: 56 engines mein ye chaaron FD001 ki tarah girte hain, aur 44 engines mein **ulta, badhte hain**. s4 aur s11 dono datasets ke sabhi engines mein badhte hain.
+
+Isi wajah se poori fleet ka correlation dhoka deta hai: s20 ka RUL ke saath r FD001 mein +0.63 hai aur FD003 mein +0.04, kyunki do ulti dishayen ek doosre ko kaat deti hain. Data mein fault mode ka label nahi hai, to "44 wala group fan fault hai" ek anumaan hai, jo readme ke do fault modes se match karta hai.
+
+FD001 par train model ne sirf girne wala pattern dekha hai. In 44 engines par kuch signals ulti baat bolenge, jabki s4 aur s11 sahi baat. Model kitna bigadega, ye abhi pata nahi. M8 ka **out-of-distribution demo** yahi naapega: FD003 replay karo, aur dekho RUL, drift monitor aur anomaly model kya karte hain.
 
 ### 4.5 Data kahan se milega
 
