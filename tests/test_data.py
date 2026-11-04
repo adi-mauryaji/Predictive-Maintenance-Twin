@@ -4,6 +4,7 @@ from hashlib import sha256
 from io import BytesIO
 from zipfile import ZipFile
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -199,14 +200,14 @@ def test_real_fd001_labels(real_raw_dir):
     first_engine = labelled[labelled["unit"] == 1]
     assert first_engine["rul"].tolist()[:2] == [191, 190]
     assert first_engine["target"].tolist()[:2] == [125, 125]
-    assert labelled.groupby("unit")["rul"].min().tolist() == [0] * 100
-    assert int(labelled["target"].max()) == 125
+    assert labelled[labelled["rul"] == 0]["unit"].tolist() == list(range(1, 101))
+    assert max(labelled["target"].tolist()) == 125
 
 
 def test_fd001_sensor_list_keeps_exactly_the_sensors_that_vary(real_raw_dir):
     train = load_cmapss(real_raw_dir, "FD001").train
     sensors = [f"s{number}" for number in range(1, 22)]
 
-    spread = train[sensors].std()
+    kept = [name for name in sensors if float(np.std(train[name].to_numpy(), ddof=1)) >= 0.01]
 
-    assert tuple(spread[spread >= 0.01].index) == FD001_SENSORS
+    assert tuple(kept) == FD001_SENSORS
