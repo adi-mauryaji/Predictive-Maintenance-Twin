@@ -6,7 +6,14 @@ from zipfile import ZipFile
 
 import pytest
 
-from pmtwin.data import ChecksumError, download_cmapss, install_archive
+from pmtwin.config import Settings
+from pmtwin.data import (
+    CMAPSS_FILES,
+    ChecksumError,
+    download_cmapss,
+    install_archive,
+    load_cmapss,
+)
 
 DATA_FILES = [f"{kind}_FD00{i}.txt" for i in (1, 2, 3, 4) for kind in ("train", "test", "RUL")]
 
@@ -78,3 +85,80 @@ def test_download_rejects_bytes_that_are_not_the_real_archive(tmp_path, monkeypa
         download_cmapss(tmp_path / "raw")
 
     assert not (tmp_path / "raw").exists()
+
+
+def _row(unit, cycle, last_sensor):
+    """One line of a C-MAPSS text file, with the trailing spaces the real files have."""
+    numbers = [unit, cycle, 0.5, 0.25, 100.0, *range(1, 21), last_sensor]
+    return " ".join(str(number) for number in numbers) + "  \n"
+
+
+def test_load_names_every_column_without_shifting_values(tmp_path):
+    (tmp_path / "train_FD001.txt").write_text(_row(1, 1, 21.5) + _row(1, 2, 22.5))
+    (tmp_path / "test_FD001.txt").write_text(_row(1, 1, 31.5))
+    (tmp_path / "RUL_FD001.txt").write_text("112 \n98 \n")
+
+    subset = load_cmapss(tmp_path, "FD001")
+
+    assert list(subset.train.columns[:6]) == [
+        "unit",
+        "cycle",
+        "setting1",
+        "setting2",
+        "setting3",
+        "s1",
+    ]
+    assert subset.train.columns[-1] == "s21"
+    assert subset.train.shape == (2, 26)
+    assert subset.train["cycle"].tolist() == [1, 2]
+    assert subset.train["s21"].tolist() == [21.5, 22.5]
+    assert subset.test["s21"].tolist() == [31.5]
+
+
+def test_load_keys_true_rul_by_engine_number(tmp_path):
+    (tmp_path / "train_FD001.txt").write_text(_row(1, 1, 0.0))
+    (tmp_path / "test_FD001.txt").write_text(_row(1, 1, 0.0))
+    (tmp_path / "RUL_FD001.txt").write_text("112 \n98 \n")
+
+    subset = load_cmapss(tmp_path, "FD001")
+
+    assert subset.test_rul.to_dict() == {1: 112, 2: 98}
+
+
+@pytest.fixture
+def real_raw_dir():
+    raw_dir = Settings().raw_dir
+    if not all((raw_dir / name).exists() for name in CMAPSS_FILES):
+        pytest.skip("real data missing: run `pmt download`")
+    return raw_dir
+
+
+@pytest.mark.parametrize(
+    ("name", "train_rows", "train_engines", "test_rows", "test_engines"),
+    [
+        ("FD001", 20631, 100, 13096, 100),
+        ("FD002", 53759, 260, 33991, 259),
+        ("FD003", 24720, 100, 16596, 100),
+        ("FD004", 61249, 249, 41214, 248),
+    ],
+)
+def test_real_files_have_the_verified_counts(
+    real_raw_dir, name, train_rows, train_engines, test_rows, test_engines
+):
+    subset = load_cmapss(real_raw_dir, name)
+
+    assert len(subset.train) == train_rows
+    assert subset.train["unit"].nunique() == train_engines
+    assert len(subset.test) == test_rows
+    assert subset.test["unit"].nunique() == test_engines
+    assert len(subset.test_rul) == test_engines
+    assert int(subset.train.isna().sum().sum()) == 0
+    assert int(subset.test.isna().sum().sum()) == 0
+
+
+def test_real_fd001_first_engine_matches_the_files(real_raw_dir):
+    subset = load_cmapss(real_raw_dir, "FD001")
+
+    assert len(subset.train[subset.train["unit"] == 1]) == 192
+    assert len(subset.test[subset.test["unit"] == 1]) == 31
+    assert subset.test_rul.to_dict()[1] == 112

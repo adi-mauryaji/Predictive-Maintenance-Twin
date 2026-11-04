@@ -1,10 +1,13 @@
-"""NASA C-MAPSS data: download with pinned checksums. Loading arrives at M1."""
+"""NASA C-MAPSS data: download with pinned checksums, then load the text files."""
 
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
+from typing import NamedTuple
 from urllib.request import urlopen
 from zipfile import ZipFile
+
+import pandas as pd
 
 # PHM Society mirror; the data.nasa.gov listing says unavailable (KYROS ADR-002).
 CMAPSS_URL = (
@@ -16,6 +19,15 @@ INNER_SHA256 = "74bef434a34db25c7bf72e668ea4cd52afe5f2cf8e44367c55a82bfd91a5a34f
 INNER_ZIP_NAME = "CMAPSSData.zip"
 CMAPSS_FILES = tuple(
     f"{kind}_FD00{subset}.txt" for subset in (1, 2, 3, 4) for kind in ("train", "test", "RUL")
+)
+
+COLUMNS = (
+    "unit",
+    "cycle",
+    "setting1",
+    "setting2",
+    "setting3",
+    *(f"s{number}" for number in range(1, 22)),
 )
 
 
@@ -54,3 +66,24 @@ def download_cmapss(raw_dir: Path) -> None:
         return
     with urlopen(CMAPSS_URL, timeout=120) as response:
         install_archive(response.read(), raw_dir)
+
+
+class CmapssSubset(NamedTuple):
+    train: pd.DataFrame
+    test: pd.DataFrame
+    test_rul: pd.Series  # true RUL after each test engine's last cycle, indexed by engine number
+
+
+def _read_table(path: Path) -> pd.DataFrame:
+    return pd.read_csv(path, sep=r"\s+", header=None, names=list(COLUMNS))
+
+
+def load_cmapss(raw_dir: Path, subset: str) -> CmapssSubset:
+    """Read one subset (FD001..FD004) from the text files in raw_dir."""
+    rul = pd.read_csv(raw_dir / f"RUL_{subset}.txt", sep=r"\s+", header=None).iloc[:, 0]
+    rul.index = pd.RangeIndex(1, len(rul) + 1, name="unit")
+    return CmapssSubset(
+        train=_read_table(raw_dir / f"train_{subset}.txt"),
+        test=_read_table(raw_dir / f"test_{subset}.txt"),
+        test_rul=rul.rename("rul"),
+    )
