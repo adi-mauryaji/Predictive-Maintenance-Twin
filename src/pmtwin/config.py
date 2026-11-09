@@ -48,3 +48,7 @@ class Settings(BaseSettings):
     @property
     def gbm_path(self) -> Path:
         return self.artifacts_dir / "gbm.joblib"
+
+    @property
+    def health_path(self) -> Path:
+        return self.artifacts_dir / "health.joblib"
