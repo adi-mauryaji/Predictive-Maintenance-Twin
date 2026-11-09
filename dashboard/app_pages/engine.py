@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 from api_client import ApiUnavailable, get_json
-from charts import sensor_trend
+from charts import health_trend, sensor_trend
 
 ALERTS = {"HEALTHY": st.success, "WATCH": st.warning, "CRITICAL": st.error}
 ICONS = {
@@ -27,8 +27,21 @@ def engine_view(engine_id: int) -> None:
         st.metric("Life", snapshot["life"], border=True)
     ALERTS[status](snapshot["recommendation"], title=status.title(), icon=ICONS[status])
 
+    health = snapshot["health"]
+    if health is not None:
+        sensors = " ".join(f":orange-badge[{name}]" for name in health["top_sensors"])
+        st.markdown(f"Furthest from normal right now: {sensors}")
+
     points = pd.DataFrame(
-        [{"cycle": point["cycle"], "rul": point["rul"], **point["sensors"]} for point in history]
+        [
+            {
+                "cycle": point["cycle"],
+                "rul": point["rul"],
+                "health_score": point["health_score"],
+                **point["sensors"],
+            }
+            for point in history
+        ]
     )
     st.subheader("Predicted RUL")
     st.line_chart(
@@ -39,6 +52,11 @@ def engine_view(engine_id: int) -> None:
         y_label="Cycles left",
         alt="Predicted remaining cycles over the engine's life",
     )
+    scored = points.dropna(subset=["health_score"])
+    if not scored.empty:
+        st.subheader("Health: distance from normal")
+        st.caption("Above 1 means outside normal. 3 of the last 5 cycles above 1 rings the alarm.")
+        st.altair_chart(health_trend(scored), alt="Health score over cycles with the alarm line")
     st.subheader("Two sensors that drift with wear")
     left, right = st.columns(2)
     with left:

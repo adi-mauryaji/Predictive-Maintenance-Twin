@@ -87,3 +87,21 @@ def test_without_a_model_ingest_is_unavailable_but_reads_work(db_path, reading):
 
 def test_health_names_the_loaded_model(client):
     assert client.get("/health").json() == {"status": "ok", "models": {"rul": "fake"}}
+
+
+def test_snapshot_fleet_and_history_carry_the_alarm(health_registry, reading):
+    app.dependency_overrides[get_registry] = lambda: health_registry
+    client = TestClient(app)
+    for cycle in (1, 2, 3):
+        client.post("/ingest", json={"readings": [reading(engine_id=5, cycle=cycle, s3=50.0)]})
+
+    snapshot = client.get("/engines/5").json()
+    fleet = client.get("/fleet").json()
+    history = client.get("/engines/5/history").json()
+    app.dependency_overrides.clear()
+
+    assert snapshot["health"]["alarm"] is True
+    assert snapshot["health"]["top_sensors"][0] == "s3"
+    assert fleet[0]["alarm"] is True
+    assert [point["alarm"] for point in history] == [False, False, True]
+    assert history[0]["health_score"] > 1.0

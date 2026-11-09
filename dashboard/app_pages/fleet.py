@@ -23,15 +23,21 @@ def fleet_view() -> None:
         st.metric(":material/check_circle: Healthy", counts["HEALTHY"], border=True)
         st.metric(":material/warning: Watch", counts["WATCH"], border=True)
         st.metric(":material/error: Critical", counts["CRITICAL"], border=True)
+        st.metric(
+            ":material/notifications_active: Alarms",
+            sum(item["alarm"] for item in items),
+            border=True,
+        )
 
     st.altair_chart(
         fleet_grid(fleet), alt=f"Status of {len(fleet)} engines, one cell per engine", key="grid"
     )
     st.dataframe(
-        fleet.sort_values("rul")[["engine_id", "status", "rul", "cycle"]],
+        fleet.sort_values("rul")[["engine_id", "status", "alarm", "rul", "cycle"]],
         column_config={
             "engine_id": st.column_config.NumberColumn("Engine"),
             "status": st.column_config.TextColumn("Status"),
+            "alarm": st.column_config.CheckboxColumn("Alarm"),
             "rul": st.column_config.NumberColumn("RUL (cycles)", format="%.0f"),
             "cycle": st.column_config.NumberColumn("Cycle"),
         },

@@ -1,5 +1,6 @@
 """The twin: state per engine, order of cycles, and surviving a restart."""
 
+import joblib
 import numpy as np
 import pytest
 
@@ -8,7 +9,7 @@ from pmtwin.data import CMAPSS_FILES, load_cmapss
 from pmtwin.features import add_rolling_means
 from pmtwin.predictors import GbmPredictor
 from pmtwin.schemas import SensorReading, Status
-from pmtwin.store import TwinStore
+from pmtwin.store import StaleDatabase, TwinStore
 from pmtwin.twin import CycleConflict, TwinRegistry, status_for
 
 
@@ -36,7 +37,61 @@ def test_ingest_returns_the_new_state_of_the_engine(registry, reading):
     ],
 )
 def test_status_follows_the_rul_thresholds(rul, expected):
-    assert status_for(rul, watch_rul=60, critical_rul=30) == expected
+    assert status_for(rul, alarm=False, watch_rul=60, critical_rul=30) == expected
+
+
+def test_alarm_alone_is_a_watch_and_low_rul_stays_critical():
+    assert status_for(100.0, alarm=True, watch_rul=60, critical_rul=30) == Status.WATCH
+    assert status_for(10.0, alarm=True, watch_rul=60, critical_rul=30) == Status.CRITICAL
+
+
+def test_alarm_rings_on_the_third_of_five_bad_readings(health_registry, reading):
+    snapshots = [
+        health_registry.ingest(readings_of(reading(cycle=cycle, s3=s3)))[0]
+        for cycle, s3 in enumerate([50.0, 3.0, 50.0, 50.0], start=1)
+    ]
+    snapshot = snapshots[-1]
+
+    assert [item.health.alarm for item in snapshots if item.health] == [False, False, False, True]
+    assert snapshot.health is not None
+    assert snapshot.status == Status.WATCH
+    assert snapshot.rul.value == 90.0
+    assert snapshot.health.top_sensors[0] == "s3"
+    assert "normal" in snapshot.recommendation
+
+
+def test_alarm_history_survives_a_restart(db_path, predictor, health_model, reading):
+    store = TwinStore(db_path)
+    first = TwinRegistry(store, predictor, Settings(), health=health_model)
+    for cycle in (1, 2):
+        first.ingest(readings_of(reading(cycle=cycle, s3=50.0)))
+    store.close()
+
+    store = TwinStore(db_path)
+    restarted = TwinRegistry(store, predictor, Settings(), health=health_model)
+    snapshot = restarted.ingest(readings_of(reading(cycle=3, s3=50.0)))[0]
+    store.close()
+
+    assert snapshot.health is not None
+    assert snapshot.health.alarm is True
+
+
+def test_without_a_health_model_there_is_no_alarm(registry, reading):
+    snapshot = registry.ingest(readings_of(reading(s3=50.0)))[0]
+
+    assert snapshot.health is None
+    assert snapshot.status == Status.HEALTHY
+
+
+def test_an_old_database_is_refused_with_a_clear_message(db_path):
+    import sqlite3
+
+    old = sqlite3.connect(db_path)
+    old.execute("CREATE TABLE cycles (engine_id INTEGER)")
+    old.close()
+
+    with pytest.raises(StaleDatabase, match="--fresh"):
+        TwinStore(db_path)
 
 
 def test_old_cycle_is_rejected_and_changes_nothing(registry, reading):
@@ -108,6 +163,33 @@ def test_negative_predictions_become_zero():
     predictor = GbmPredictor(AlwaysNegative(), ["s2", "s2_mean"], window=2)
 
     assert predictor.predict([[{"s2": 1.0}]]) == [0.0]
+
+
+def test_twin_health_score_equals_the_notebook_score(db_path):
+    settings = Settings()
+    has_data = all((settings.raw_dir / name).exists() for name in CMAPSS_FILES)
+    if not (has_data and settings.gbm_path.exists() and settings.health_path.exists()):
+        pytest.skip("needs `pmt download` and both notebooks' artifacts")
+    health = joblib.load(settings.health_path)
+    engine = load_cmapss(settings.raw_dir, "FD001").test.query("unit == 1").reset_index(drop=True)
+    sensors = [f"s{number}" for number in range(1, 22)]
+    store = TwinStore(db_path)
+    registry = TwinRegistry(store, GbmPredictor.load(settings.gbm_path), settings, health=health)
+
+    served = []
+    for row in engine.to_dict("records"):
+        reading = SensorReading(
+            engine_id=1,
+            cycle=int(row["cycle"]),
+            settings={name: row[name] for name in ("setting1", "setting2", "setting3")},
+            sensors={name: row[name] for name in sensors},
+        )
+        result = registry.ingest([reading])[0].health
+        assert result is not None
+        served.append(result.score)
+    store.close()
+
+    assert np.allclose(served, health.scores(engine)["score"])
 
 
 def test_twin_gives_the_same_answer_as_training_features(db_path):

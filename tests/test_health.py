@@ -69,6 +69,11 @@ def test_broken_relationship_raises_spe_and_names_its_sensors(model):
     assert set(model.top_sensors(broken, k=2)[0]) == {"a", "b"}
 
 
+def test_top_sensors_name_what_moved_even_when_spe_is_quiet(model):
+    """FD001 alarms are almost all T²-driven; the explanation must still name the right sensor."""
+    assert model.top_sensors(reading(0.0, 0.0, 5.0), k=1) == [["c"]]
+
+
 def test_limits_turn_scores_into_over_flags_and_a_ratio(model):
     limited = model.with_limits(t2_limit=10.0, spe_limit=5.0)
 

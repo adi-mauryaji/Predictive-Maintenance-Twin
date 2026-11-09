@@ -55,11 +55,22 @@ class RulEstimate(BaseModel):
     model: str
 
 
+class HealthResult(BaseModel):
+    t2: float
+    spe: float
+    score: float  # 1.0 is the alarm line
+    t2_limit: float
+    spe_limit: float
+    alarm: bool  # 3 of the last 5 readings over a limit
+    top_sensors: list[str]
+
+
 class TwinSnapshot(BaseModel):
     engine_id: int
     life: int
     cycle: int
     rul: RulEstimate
+    health: HealthResult | None
     status: Status
     recommendation: str
     updated_at: datetime
@@ -75,11 +86,14 @@ class FleetItem(BaseModel):
     cycle: int
     status: Status
     rul: float
+    alarm: bool
 
 
 class HistoryPoint(BaseModel):
     cycle: int
     rul: float
+    health_score: float | None
+    alarm: bool
     status: Status
     sensors: dict[str, float]
 

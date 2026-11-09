@@ -11,9 +11,9 @@ from streamlit.testing.v1 import AppTest
 ENTRY = str(Path(__file__).resolve().parents[1] / "dashboard" / "streamlit_app.py")
 
 FLEET = [
-    {"engine_id": 1, "life": 1, "cycle": 40, "status": "HEALTHY", "rul": 90.0},
-    {"engine_id": 2, "life": 1, "cycle": 40, "status": "WATCH", "rul": 50.0},
-    {"engine_id": 3, "life": 1, "cycle": 40, "status": "CRITICAL", "rul": 12.0},
+    {"engine_id": 1, "life": 1, "cycle": 40, "status": "HEALTHY", "rul": 90.0, "alarm": False},
+    {"engine_id": 2, "life": 1, "cycle": 40, "status": "WATCH", "rul": 50.0, "alarm": True},
+    {"engine_id": 3, "life": 1, "cycle": 40, "status": "CRITICAL", "rul": 12.0, "alarm": True},
 ]
 SNAPSHOT = {
     "engine_id": 1,
@@ -23,10 +23,33 @@ SNAPSHOT = {
     "status": "HEALTHY",
     "recommendation": "No action needed.",
     "updated_at": "2026-11-04T10:00:00Z",
+    "health": {
+        "t2": 30.0,
+        "spe": 1.0,
+        "score": 1.2,
+        "t2_limit": 25.6,
+        "spe_limit": 2.3,
+        "alarm": True,
+        "top_sensors": ["s9", "s14", "s11"],
+    },
 }
 HISTORY = [
-    {"cycle": 39, "rul": 91.0, "status": "HEALTHY", "sensors": {"s11": 47.1, "s12": 522.0}},
-    {"cycle": 40, "rul": 90.0, "status": "HEALTHY", "sensors": {"s11": 47.2, "s12": 521.9}},
+    {
+        "cycle": 39,
+        "rul": 91.0,
+        "status": "HEALTHY",
+        "health_score": 0.9,
+        "alarm": False,
+        "sensors": {"s11": 47.1, "s12": 522.0},
+    },
+    {
+        "cycle": 40,
+        "rul": 90.0,
+        "status": "HEALTHY",
+        "health_score": 1.2,
+        "alarm": True,
+        "sensors": {"s11": 47.2, "s12": 521.9},
+    },
 ]
 
 
@@ -54,7 +77,7 @@ def test_fleet_page_counts_each_status(monkeypatch):
     app = run_app()
 
     assert not app.exception
-    assert [metric.value for metric in app.metric] == ["1", "1", "1"]
+    assert [metric.value for metric in app.metric] == ["1", "1", "1", "2"]
     assert app.dataframe[0].value["engine_id"].tolist() == [3, 2, 1]
 
 
@@ -68,6 +91,7 @@ def test_engine_page_opens_on_the_engine_closest_to_failure(monkeypatch):
     assert app.selectbox[0].options == ["1", "2", "3"]
     assert app.selectbox[0].value == 3
     assert app.metric[0].value == "90"
+    assert any("s9" in item.value and "s14" in item.value for item in app.markdown)
 
 
 def test_sensor_chart_axis_follows_the_data_so_drift_is_visible():

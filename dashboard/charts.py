@@ -56,3 +56,22 @@ def sensor_trend(points: pd.DataFrame, sensor: str) -> alt.Chart:
             tooltip=["cycle:Q", f"{sensor}:Q"],
         )
     )
+
+
+def health_trend(points: pd.DataFrame) -> alt.LayerChart | alt.FacetChart:
+    """Health score on a log axis, with the alarm line at 1."""
+    line = (
+        alt.Chart(points)
+        .mark_line(strokeWidth=2)
+        .encode(
+            x=alt.X("cycle:Q", title="Cycle"),
+            y=alt.Y("health_score:Q", title="Health score", scale=alt.Scale(type="log")),
+            tooltip=["cycle:Q", alt.Tooltip("health_score:Q", format=".2f")],
+        )
+    )
+    alarm_line = (
+        alt.Chart(pd.DataFrame({"y": [1.0], "label": ["alarm line"]}))
+        .mark_rule(color="#d03b3b", strokeWidth=1)
+        .encode(y="y:Q", tooltip=["label:N"])
+    )
+    return alt.layer(line, alarm_line)

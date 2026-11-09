@@ -40,9 +40,13 @@ class HealthModel:
         )
 
     def top_sensors(self, readings: pd.DataFrame, k: int = 3) -> list[list[str]]:
-        """Per reading, the k sensors that add most to SPE."""
-        _, residual = self._residuals(readings)
-        order = np.argsort(-(residual**2), axis=1)[:, :k]
+        """Per reading, the k sensors furthest from their healthy mean, in units of their spread.
+
+        Not SPE contributions: 99% of FD001 validation alarm cycles are T²-driven, and SPE then
+        names sensors that barely moved (KYROS ADR-008).
+        """
+        scaled = self.scaler.transform(readings[self.sensors])
+        order = np.argsort(-np.abs(scaled), axis=1)[:, :k]
         return [[self.sensors[index] for index in row] for row in order]
 
 

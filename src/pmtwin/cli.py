@@ -17,6 +17,7 @@ from pmtwin.data import CMAPSS_FILES, ChecksumError, download_cmapss, load_cmaps
 from pmtwin.replay import replay
 
 NOTEBOOK = "notebooks/01_first_model.ipynb"
+HEALTH_NOTEBOOK = "notebooks/02_health.ipynb"
 DASHBOARD = PROJECT_ROOT / "dashboard" / "streamlit_app.py"
 
 
@@ -74,6 +75,8 @@ def _demo(settings: Settings, subset: str, engines: int, tick: float) -> None:
         raise SystemExit("C-MAPSS data is missing. Run `pmt download` first.")
     if not settings.gbm_path.exists():
         raise SystemExit(f"The model is missing. Run {NOTEBOOK} to save it first.")
+    if not settings.health_path.exists():
+        print(f"No health model yet, so no alarms. {HEALTH_NOTEBOOK} saves it.")
     _forget_twin_state(settings)
     address = urlsplit(settings.api_url)
     python = sys.executable

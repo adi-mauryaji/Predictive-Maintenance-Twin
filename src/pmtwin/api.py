@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Annotated
 
+import joblib
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -27,7 +28,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = Settings()
     store = TwinStore(settings.db_path)
     predictor = GbmPredictor.load(settings.gbm_path) if settings.gbm_path.exists() else None
-    app.state.registry = TwinRegistry(store, predictor, settings)
+    health = joblib.load(settings.health_path) if settings.health_path.exists() else None
+    app.state.registry = TwinRegistry(store, predictor, settings, health=health)
     yield
     store.close()
 
@@ -54,7 +56,10 @@ EngineId = Annotated[int, Path(ge=1)]
 def health(registry: RegistryDep) -> HealthResponse:
     if registry.predictor is None:
         return HealthResponse(status="no_model", models={})
-    return HealthResponse(status="ok", models={"rul": registry.predictor.name})
+    models = {"rul": registry.predictor.name}
+    if registry.health is not None:
+        models["health"] = "pca"
+    return HealthResponse(status="ok", models=models)
 
 
 @app.post("/ingest")
